@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phishing URL Detector</title>
+  <style>
+    :root {
+      --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #FFF3F3;
+      --ink: #201415; --ink-muted: #8C6F70;
+      --line: #F3D9D9; --line-strong: #E7B9B9;
+      --accent: #D81E23; --accent-strong: #A9151A; --accent-soft: #FBD9D9;
+      --good: #2E9563; --good-soft: #DFF3E8; --good-ink: #1E6E48;
+      --warn: #B87A0A; --warn-soft: #FBF0D9; --warn-ink: #8A5C08;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #150C0C; --surface: #1F1414; --surface-2: #261818;
+        --ink: #F5E9E9; --ink-muted: #B08C8C;
+        --line: #3A2424; --line-strong: #4A2E2E;
+        --accent: #FF4B4F; --accent-strong: #FF7276; --accent-soft: #3D1A1A;
+        --good: #4FCB92; --good-soft: #16362A; --good-ink: #8FE4BE;
+        --warn: #E3A73E; --warn-soft: #362A16; --warn-ink: #E3B368;
+      }
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: 'var(--bg)', surface: 'var(--surface)', 'surface-2': 'var(--surface-2)',
+            ink: 'var(--ink)', 'ink-muted': 'var(--ink-muted)',
+            line: 'var(--line)', 'line-strong': 'var(--line-strong)',
+            accent: 'var(--accent)', 'accent-strong': 'var(--accent-strong)', 'accent-soft': 'var(--accent-soft)',
+            good: 'var(--good)', 'good-soft': 'var(--good-soft)', 'good-ink': 'var(--good-ink)',
+            warn: 'var(--warn)', 'warn-soft': 'var(--warn-soft)', 'warn-ink': 'var(--warn-ink)',
+          },
+          fontFamily: {
+            display: ['Georgia', '"Iowan Old Style"', '"Times New Roman"', 'serif'],
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-bg text-ink antialiased min-h-screen">
+  <div class="max-w-xl mx-auto px-5 py-10">
+    <header class="mb-6">
+      <h1 class="font-display text-2xl font-semibold mb-1">Phishing URL Detector</h1>
+      <p class="text-sm text-ink-muted">วางลิงก์ที่สงสัยแล้วตรวจสอบด้วย heuristic 8 ข้อ — ไม่ส่งข้อมูลไปเซิร์ฟเวอร์ไหน ตรวจในเบราว์เซอร์ล้วน</p>
+    </header>
+
+    <div class="bg-surface border border-line rounded-2xl shadow-sm p-5 mb-6">
+      <div class="flex gap-2 mb-2">
+        <input
+          id="UrlInput"
+          type="text"
+          placeholder="เช่น https://example.com/login"
+          class="flex-1 text-[15px] px-3 py-2 rounded-lg border border-line-strong bg-bg text-ink focus:outline-none focus:ring-2 focus:ring-accent-strong"
+        >
+        <button
+          id="CheckButton"
+          type="button"
+          class="px-4 py-2 rounded-lg bg-accent hover:bg-accent-strong text-white font-semibold whitespace-nowrap"
+        >ตรวจสอบ</button>
+      </div>
+      <p id="ErrorMsg" class="text-sm text-accent-strong hidden"></p>
+    </div>
+
+    <div id="Result"></div>
+
+    <div class="mt-8">
+      <h2 class="text-sm font-semibold text-ink-muted mb-2">ประวัติการตรวจสอบ</h2>
+      <ul id="History" class="flex flex-col gap-2"></ul>
+    </div>
+  </div>
+
+  <script src="rules.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
