@@ -1,6 +1,3 @@
-// รวมกฎ (heuristic) ตรวจ URL แต่ละข้อ — แต่ละกฎเป็น pure function แยกกันเทส/แก้ได้อิสระ
-// แนวทางนี้เลียนแบบระบบจริง (เช่น Google Safe Browsing) ที่ใช้ heuristic เป็นชั้นแรกก่อน ML
-
 const KNOWN_DOMAINS = [
   'google.com', 'facebook.com', 'paypal.com', 'apple.com', 'microsoft.com',
   'amazon.com', 'instagram.com', 'netflix.com', 'line.me', 'kbank.co.th',
@@ -15,8 +12,7 @@ const SUSPICIOUS_KEYWORDS = [
   'login', 'verify', 'secure', 'update', 'account', 'confirm', 'banking', 'signin', 'password', 'wallet',
 ];
 
-// Levenshtein distance — นับจำนวนตัวอักษรขั้นต่ำที่ต้องแก้ (เพิ่ม/ลบ/เปลี่ยน) เพื่อให้ string a กลายเป็น b
-// ใช้เช็ค typosquatting: ถ้า hostname "เกือบ" ตรงกับโดเมนดัง (ต่างแค่ 1-2 ตัว) แต่ไม่ตรงเป๊ะ = น่าสงสัย
+
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
   const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
@@ -26,9 +22,9 @@ function levenshtein(a, b) {
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,      // ลบ
-        dp[i][j - 1] + 1,      // เพิ่ม
-        dp[i - 1][j - 1] + cost // เปลี่ยน
+        dp[i - 1][j] + 1,      
+        dp[i][j - 1] + 1,      
+        dp[i - 1][j - 1] + cost 
       );
     }
   }

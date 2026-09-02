@@ -1,5 +1,6 @@
 const HISTORY_KEY = 'phishing-history';
 const MAX_HISTORY = 10;
+const ML_API_URL = 'http://localhost:8000/predict';
 
 const LEVEL_META = {
   safe: { label: 'ปลอดภัย', bg: 'bg-good-soft', text: 'text-good-ink', ring: 'ring-good' },
@@ -12,6 +13,7 @@ const button = document.querySelector('#CheckButton');
 const errorMsg = document.querySelector('#ErrorMsg');
 const resultEl = document.querySelector('#Result');
 const historyEl = document.querySelector('#History');
+const mlResultEl = document.querySelector('#MLResult');
 
 function loadHistory() {
   const raw = localStorage.getItem(HISTORY_KEY);
@@ -108,12 +110,56 @@ function renderHistory() {
   });
 }
 
+function renderMLPending() {
+  mlResultEl.innerHTML = `
+    <div class="text-sm text-ink-muted px-3 py-2">กำลังตรวจด้วยโมเดล ML...</div>
+  `;
+}
+
+function renderMLResult(isPhishing) {
+  const bg = isPhishing ? 'bg-accent-soft' : 'bg-good-soft';
+  const text = isPhishing ? 'text-accent-strong' : 'text-good-ink';
+  const label = isPhishing ? 'โมเดล ML: น่าจะเป็น Phishing' : 'โมเดล ML: น่าจะปลอดภัย';
+  mlResultEl.innerHTML = `
+    <div class="text-sm px-3 py-2 rounded-lg ${bg} ${text} font-medium">${label}</div>
+  `;
+}
+
+function renderMLUnavailable() {
+  mlResultEl.innerHTML = `
+    <div class="text-sm text-ink-muted px-3 py-2">
+      ตรวจด้วย ML ไม่ได้ — เปิด API ไว้ที่ localhost:8000 ก่อน (ดู phishing-detector/api/README.md)
+    </div>
+  `;
+}
+
+async function checkML(url) {
+  renderMLPending();
+  try {
+    const res = await fetch(ML_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    renderMLResult(data.isPhishing);
+  } catch (err) {
+    renderMLUnavailable();
+  }
+}
+
 function runCheck() {
   const raw = input.value.trim();
   if (!raw) return;
   const evaluation = evaluateUrl(raw);
   renderResult(evaluation);
-  if (evaluation.valid) addToHistory(evaluation);
+  if (evaluation.valid) {
+    addToHistory(evaluation);
+    checkML(raw);
+  } else {
+    mlResultEl.innerHTML = '';
+  }
 }
 
 button.addEventListener('click', runCheck);
