@@ -12,6 +12,10 @@ const SUSPICIOUS_KEYWORDS = [
   'login', 'verify', 'secure', 'update', 'account', 'confirm', 'banking', 'signin', 'password', 'wallet',
 ];
 
+// ผลรวมน้ำหนักกฎทั้ง 8 ข้อ (3+3+2+1+1+1+1+3) — ใช้กำหนดสเกลบนสุดของมาตรวัดใน app.js
+const MAX_SCORE = 15;
+const SCORE_THRESHOLDS = { suspicious: 1, dangerous: 4 };
+
 
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
@@ -190,8 +194,8 @@ function evaluateUrl(rawInput) {
   const score = results.reduce((sum, r) => sum + (r.triggered ? r.weight : 0), 0);
 
   let level;
-  if (score === 0) level = 'safe';
-  else if (score <= 3) level = 'suspicious';
+  if (score < SCORE_THRESHOLDS.suspicious) level = 'safe';
+  else if (score < SCORE_THRESHOLDS.dangerous) level = 'suspicious';
   else level = 'dangerous';
 
   return { valid: true, url: rawInput, hostname: url.hostname, results, score, level };

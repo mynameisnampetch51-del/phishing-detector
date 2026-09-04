@@ -1,80 +1,305 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Phishing URL Detector</title>
-  <style>
-    :root {
-      --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #FFF3F3;
-      --ink: #201415; --ink-muted: #8C6F70;
-      --line: #F3D9D9; --line-strong: #E7B9B9;
-      --accent: #D81E23; --accent-strong: #A9151A; --accent-soft: #FBD9D9;
-      --good: #2E9563; --good-soft: #DFF3E8; --good-ink: #1E6E48;
-      --warn: #B87A0A; --warn-soft: #FBF0D9; --warn-ink: #8A5C08;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #150C0C; --surface: #1F1414; --surface-2: #261818;
-        --ink: #F5E9E9; --ink-muted: #B08C8C;
-        --line: #3A2424; --line-strong: #4A2E2E;
-        --accent: #FF4B4F; --accent-strong: #FF7276; --accent-soft: #3D1A1A;
-        --good: #4FCB92; --good-soft: #16362A; --good-ink: #8FE4BE;
-        --warn: #E3A73E; --warn-soft: #362A16; --warn-ink: #E3B368;
-      }
-    }
-  </style>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            bg: 'var(--bg)', surface: 'var(--surface)', 'surface-2': 'var(--surface-2)',
-            ink: 'var(--ink)', 'ink-muted': 'var(--ink-muted)',
-            line: 'var(--line)', 'line-strong': 'var(--line-strong)',
-            accent: 'var(--accent)', 'accent-strong': 'var(--accent-strong)', 'accent-soft': 'var(--accent-soft)',
-            good: 'var(--good)', 'good-soft': 'var(--good-soft)', 'good-ink': 'var(--good-ink)',
-            warn: 'var(--warn)', 'warn-soft': 'var(--warn-soft)', 'warn-ink': 'var(--warn-ink)',
-          },
-          fontFamily: {
-            display: ['Georgia', '"Iowan Old Style"', '"Times New Roman"', 'serif'],
-          },
-        },
-      },
-    };
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phishing URL Detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EEF2F6;
+    --panel: #FFFFFF;
+    --field: #F3F6FA;
+    --line: #D7DEE7;
+    --ink: #16233A;
+    --ink-dim: #5B6B85;
+    --accent: #2657C8;
+    --accent-ink: #14306B;
+    --safe: #2E9563;
+    --safe-soft: #E1F3EA;
+    --warn: #D98A1F;
+    --warn-soft: #FBF0DB;
+    --danger: #E4483F;
+    --danger-soft: #FBE2E0;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans Thai", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 48px 20px 40px;
+  }
+
+  .hero {
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+
+  .hero p {
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 16px 40px -28px rgba(22, 35, 58, 0.35);
+  }
+
+  .field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--field);
+    padding: 16px 12px 12px;
+  }
+
+  .field-label {
+    position: absolute;
+    top: -9px;
+    left: 14px;
+    background: var(--panel);
+    padding: 0 6px;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+
+  .field input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--ink);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 15px;
+  }
+
+  .field input::placeholder {
+    color: var(--ink-dim);
+    font-family: "IBM Plex Sans Thai", sans-serif;
+  }
+
+  .btn-check {
+    flex-shrink: 0;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+
+  .btn-check:hover { filter: brightness(1.08); }
+
+  .error-msg {
+    color: var(--danger);
+    font-size: 13px;
+    margin: 10px 2px 0;
+  }
+
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 22px;
+  }
+
+  .gauge {
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+  }
+
+  .gauge .tick { stroke: var(--ink-dim); opacity: 0.45; }
+
+  .gauge .tick-label {
+    fill: var(--ink-dim);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    text-anchor: middle;
+  }
+
+  .gauge .zone { fill: none; stroke-linecap: round; }
+
+  .needle { transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1); }
+  .needle line { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+  .needle circle { fill: var(--panel); stroke: var(--ink); stroke-width: 2; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .needle { transition: none; }
+  }
+
+  .readout { margin-top: -14px; text-align: center; }
+
+  .readout .score {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .readout .score-unit { font-size: 13px; color: var(--ink-dim); margin-left: 4px; }
+  .readout .level { margin-top: 4px; font-size: 15px; font-weight: 600; }
+
+  .level--empty { color: var(--ink-dim); font-weight: 400; }
+  .level--safe { color: var(--safe); }
+  .level--suspicious { color: var(--warn); }
+  .level--dangerous { color: var(--danger); }
+
+  .hostname {
+    text-align: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin-top: 6px;
+    word-break: break-all;
+  }
+
+  .checklist { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+  .checklist li {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    background: var(--field);
+  }
+
+  .checklist li.hit { background: var(--danger-soft); }
+
+  .checklist .mark { font-weight: 700; flex-shrink: 0; }
+  .checklist li.hit .mark { color: var(--danger); }
+  .checklist li:not(.hit) .mark { color: var(--safe); }
+  .checklist .rule-label { font-weight: 600; }
+  .checklist .rule-detail { display: block; color: var(--ink-dim); margin-top: 2px; }
+
+  .ml-box {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .ml-box.pending, .ml-box.unavailable { background: var(--field); color: var(--ink-dim); font-weight: 400; }
+  .ml-box.phishing { background: var(--danger-soft); color: var(--danger); }
+  .ml-box.legit { background: var(--safe-soft); color: var(--safe); }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 10px;
+  }
+
+  .history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+  .history-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .history-list .url {
+    font-family: "IBM Plex Mono", monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .history-list .badge {
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .badge--safe { background: var(--safe-soft); color: var(--safe); }
+  .badge--suspicious { background: var(--warn-soft); color: var(--warn); }
+  .badge--dangerous { background: var(--danger-soft); color: var(--danger); }
+
+  .empty-note { color: var(--ink-dim); font-size: 13px; }
+
+  input:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
 </head>
-<body class="bg-bg text-ink antialiased min-h-screen">
-  <div class="max-w-xl mx-auto px-5 py-10">
-    <header class="mb-6">
-      <h1 class="font-display text-2xl font-semibold mb-1">Phishing URL Detector</h1>
-      <p class="text-sm text-ink-muted">วางลิงก์ที่สงสัยแล้วตรวจสอบด้วย heuristic 8 ข้อ — ตรวจในเบราว์เซอร์ล้วน ไม่ส่งข้อมูลไปไหน ส่วนผลจากโมเดล ML (ถ้าเปิด API ไว้ที่ localhost:8000) จะส่ง URL ไปให้ server ตรวจแทน เพราะต้องโหลดหน้าเว็บจริงมาแกะ</p>
+<body>
+  <div class="page">
+    <header class="hero">
+      <h1>Phishing URL Detector</h1>
+      <p>วางลิงก์ที่สงสัย ตรวจด้วย heuristic 8 ข้อในเบราว์เซอร์ล้วน เสริมด้วยโมเดล ML (ถ้าเปิด API ไว้ที่ localhost:8000) ที่แกะเนื้อหาหน้าเว็บจริงมาเช็คเพิ่ม</p>
     </header>
 
-    <div class="bg-surface border border-line rounded-2xl shadow-sm p-5 mb-6">
-      <div class="flex gap-2 mb-2">
-        <input
-          id="UrlInput"
-          type="text"
-          placeholder="เช่น https://example.com/login"
-          class="flex-1 text-[15px] px-3 py-2 rounded-lg border border-line-strong bg-bg text-ink focus:outline-none focus:ring-2 focus:ring-accent-strong"
-        >
-        <button
-          id="CheckButton"
-          type="button"
-          class="px-4 py-2 rounded-lg bg-accent hover:bg-accent-strong text-white font-semibold whitespace-nowrap"
-        >ตรวจสอบ</button>
+    <div class="panel">
+      <div class="field">
+        <span class="field-label">URL ที่ต้องการตรวจสอบ</span>
+        <input id="UrlInput" type="text" autocomplete="off" spellcheck="false" placeholder="เช่น https://example.com/login">
+        <button id="CheckButton" class="btn-check" type="button">ตรวจสอบ</button>
       </div>
-      <p id="ErrorMsg" class="text-sm text-accent-strong hidden"></p>
+      <p id="ErrorMsg" class="error-msg" style="display:none"></p>
+
+      <div id="GaugeSection" style="display:none">
+        <div class="gauge-wrap">
+          <svg id="Gauge" class="gauge" viewBox="0 0 240 200"></svg>
+          <div class="readout">
+            <span id="ScoreValue" class="score">—</span><span class="score-unit">คะแนนเสี่ยง</span>
+            <div id="LevelLabel" class="level level--empty"></div>
+          </div>
+          <div id="HostnameLabel" class="hostname"></div>
+        </div>
+
+        <ul id="Checklist" class="checklist"></ul>
+        <div id="MLResult"></div>
+      </div>
     </div>
 
-    <div id="Result"></div>
-    <div id="MLResult" class="mt-3"></div>
-
-    <div class="mt-8">
-      <h2 class="text-sm font-semibold text-ink-muted mb-2">ประวัติการตรวจสอบ</h2>
-      <ul id="History" class="flex flex-col gap-2"></ul>
+    <div class="panel">
+      <p class="section-label">ประวัติการตรวจสอบ</p>
+      <ul id="History" class="history-list"></ul>
     </div>
   </div>
 

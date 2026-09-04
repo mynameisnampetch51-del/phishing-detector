@@ -2,18 +2,25 @@ const HISTORY_KEY = 'phishing-history';
 const MAX_HISTORY = 10;
 const ML_API_URL = 'http://localhost:8000/predict';
 
-const LEVEL_META = {
-  safe: { label: 'ปลอดภัย', bg: 'bg-good-soft', text: 'text-good-ink', ring: 'ring-good' },
-  suspicious: { label: 'น่าสงสัย', bg: 'bg-warn-soft', text: 'text-warn-ink', ring: 'ring-warn' },
-  dangerous: { label: 'อันตรายสูง', bg: 'bg-accent-soft', text: 'text-accent-strong', ring: 'ring-accent' },
-};
+const LEVEL_LABELS = { safe: 'ปลอดภัย', suspicious: 'น่าสงสัย', dangerous: 'อันตรายสูง' };
+
+const GAUGE_CX = 120;
+const GAUGE_CY = 145;
+const GAUGE_R = 95;
+const GAUGE_HALF_SWEEP = 120;
+const NS = 'http://www.w3.org/2000/svg';
 
 const input = document.querySelector('#UrlInput');
 const button = document.querySelector('#CheckButton');
 const errorMsg = document.querySelector('#ErrorMsg');
-const resultEl = document.querySelector('#Result');
-const historyEl = document.querySelector('#History');
+const gaugeSection = document.querySelector('#GaugeSection');
+const gaugeSvg = document.querySelector('#Gauge');
+const scoreValueEl = document.querySelector('#ScoreValue');
+const levelLabelEl = document.querySelector('#LevelLabel');
+const hostnameLabelEl = document.querySelector('#HostnameLabel');
+const checklistEl = document.querySelector('#Checklist');
 const mlResultEl = document.querySelector('#MLResult');
+const historyEl = document.querySelector('#History');
 
 function loadHistory() {
   const raw = localStorage.getItem(HISTORY_KEY);
@@ -31,55 +38,111 @@ function addToHistory(evaluation) {
   renderHistory();
 }
 
+// --- Gauge (same needle/arc approach as password-strength-checker/app.js) ---
+
+function scoreToAngle(score) {
+  const clamped = Math.max(0, Math.min(MAX_SCORE, score));
+  return -GAUGE_HALF_SWEEP + (clamped / MAX_SCORE) * (GAUGE_HALF_SWEEP * 2);
+}
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+}
+
+function arcPath(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, startAngle);
+  const end = polarToCartesian(cx, cy, r, endAngle);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function buildGauge() {
+  const zones = [
+    { from: 0, to: SCORE_THRESHOLDS.suspicious, color: 'var(--safe)' },
+    { from: SCORE_THRESHOLDS.suspicious, to: SCORE_THRESHOLDS.dangerous, color: 'var(--warn)' },
+    { from: SCORE_THRESHOLDS.dangerous, to: MAX_SCORE, color: 'var(--danger)' },
+  ];
+  zones.forEach((z) => {
+    gaugeSvg.appendChild(svgEl('path', {
+      class: 'zone',
+      d: arcPath(GAUGE_CX, GAUGE_CY, GAUGE_R, scoreToAngle(z.from), scoreToAngle(z.to)),
+      stroke: z.color,
+      'stroke-width': 14,
+    }));
+  });
+
+  for (let score = 0; score <= MAX_SCORE; score++) {
+    const isMajor = score % 5 === 0;
+    const angle = scoreToAngle(score);
+    const outer = polarToCartesian(GAUGE_CX, GAUGE_CY, GAUGE_R - 9, angle);
+    const inner = polarToCartesian(GAUGE_CX, GAUGE_CY, GAUGE_R - (isMajor ? 20 : 15), angle);
+    gaugeSvg.appendChild(svgEl('line', {
+      class: 'tick', x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y,
+      'stroke-width': isMajor ? 2 : 1,
+    }));
+    if (isMajor) {
+      const labelPos = polarToCartesian(GAUGE_CX, GAUGE_CY, GAUGE_R - 32, angle);
+      const label = svgEl('text', { class: 'tick-label', x: labelPos.x, y: labelPos.y + 4 });
+      label.textContent = score;
+      gaugeSvg.appendChild(label);
+    }
+  }
+
+  const needle = svgEl('g', { class: 'needle', style: `transform-origin:${GAUGE_CX}px ${GAUGE_CY}px` });
+  needle.appendChild(svgEl('line', { x1: GAUGE_CX, y1: GAUGE_CY, x2: GAUGE_CX, y2: GAUGE_CY - 76 }));
+  needle.appendChild(svgEl('circle', { cx: GAUGE_CX, cy: GAUGE_CY, r: 7 }));
+  gaugeSvg.appendChild(needle);
+  return needle;
+}
+
+const needleEl = buildGauge();
+
+function setNeedle(score) {
+  needleEl.style.transform = `rotate(${scoreToAngle(score)}deg)`;
+}
+
+// --- Rendering ---
+
+function renderChecklist(results) {
+  checklistEl.innerHTML = '';
+  results.forEach((r) => {
+    const li = document.createElement('li');
+    li.className = r.triggered ? 'hit' : '';
+    li.innerHTML = `
+      <span class="mark">${r.triggered ? '✕' : '✓'}</span>
+      <span>
+        <span class="rule-label">${r.label}</span>
+        <span class="rule-detail">${r.detail}</span>
+      </span>
+    `;
+    checklistEl.appendChild(li);
+  });
+}
+
 function renderResult(evaluation) {
   if (!evaluation.valid) {
     errorMsg.textContent = evaluation.error;
-    errorMsg.classList.remove('hidden');
-    resultEl.innerHTML = '';
+    errorMsg.style.display = 'block';
+    gaugeSection.style.display = 'none';
     return;
   }
-  errorMsg.classList.add('hidden');
+  errorMsg.style.display = 'none';
+  gaugeSection.style.display = 'block';
 
-  const meta = LEVEL_META[evaluation.level];
-  const triggeredCount = evaluation.results.filter((r) => r.triggered).length;
+  setNeedle(evaluation.score);
+  scoreValueEl.textContent = evaluation.score;
+  levelLabelEl.textContent = LEVEL_LABELS[evaluation.level];
+  levelLabelEl.className = `level level--${evaluation.level}`;
+  hostnameLabelEl.textContent = evaluation.hostname;
 
-  const card = document.createElement('div');
-  card.className = `bg-surface border border-line rounded-2xl shadow-sm p-5 ring-1 ${meta.ring}`;
-
-  const header = document.createElement('div');
-  header.className = 'flex items-center justify-between mb-4 gap-3';
-  header.innerHTML = `
-    <div>
-      <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold ${meta.bg} ${meta.text}">${meta.label}</span>
-      <p class="text-sm text-ink-muted mt-2 break-words">${evaluation.hostname}</p>
-    </div>
-    <div class="text-right shrink-0">
-      <div class="text-2xl font-display font-semibold">${evaluation.score}</div>
-      <div class="text-xs text-ink-muted">คะแนนความเสี่ยง</div>
-    </div>
-  `;
-  card.appendChild(header);
-
-  const list = document.createElement('ul');
-  list.className = 'flex flex-col gap-2';
-  evaluation.results.forEach((r) => {
-    const li = document.createElement('li');
-    li.className = `flex gap-2 text-sm px-3 py-2 rounded-lg ${r.triggered ? 'bg-accent-soft' : 'bg-surface-2'}`;
-    li.innerHTML = `
-      <span class="${r.triggered ? 'text-accent-strong' : 'text-good'} font-bold shrink-0">${r.triggered ? '✕' : '✓'}</span>
-      <span>
-        <span class="font-medium">${r.label}</span>
-        <span class="block text-ink-muted">${r.detail}</span>
-      </span>
-    `;
-    list.appendChild(li);
-  });
-  card.appendChild(list);
-
-  resultEl.innerHTML = '';
-  resultEl.appendChild(card);
-
-  console.log(`ตรวจ ${triggeredCount}/${evaluation.results.length} ข้อ เข้าเกณฑ์ — คะแนนรวม ${evaluation.score}`);
+  renderChecklist(evaluation.results);
 }
 
 function renderHistory() {
@@ -88,19 +151,17 @@ function renderHistory() {
 
   if (list.length === 0) {
     const empty = document.createElement('li');
-    empty.className = 'text-sm text-ink-muted';
-    empty.textContent = 'ยังไม่มีประวัติการตรวจสอบ';
+    empty.style.cursor = 'default';
+    empty.innerHTML = '<span class="empty-note">ยังไม่มีประวัติการตรวจสอบ</span>';
     historyEl.appendChild(empty);
     return;
   }
 
   list.forEach((entry) => {
-    const meta = LEVEL_META[entry.level];
     const li = document.createElement('li');
-    li.className = 'flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-line bg-surface-2 cursor-pointer text-sm';
     li.innerHTML = `
-      <span class="truncate">${entry.url}</span>
-      <span class="px-2 py-0.5 rounded-full font-medium shrink-0 ${meta.bg} ${meta.text}">${meta.label}</span>
+      <span class="url">${entry.url}</span>
+      <span class="badge badge--${entry.level}">${LEVEL_LABELS[entry.level]}</span>
     `;
     li.addEventListener('click', () => {
       input.value = entry.url;
@@ -111,25 +172,18 @@ function renderHistory() {
 }
 
 function renderMLPending() {
-  mlResultEl.innerHTML = `
-    <div class="text-sm text-ink-muted px-3 py-2">กำลังตรวจด้วยโมเดล ML...</div>
-  `;
+  mlResultEl.innerHTML = `<div class="ml-box pending">กำลังตรวจด้วยโมเดล ML...</div>`;
 }
 
 function renderMLResult(isPhishing) {
-  const bg = isPhishing ? 'bg-accent-soft' : 'bg-good-soft';
-  const text = isPhishing ? 'text-accent-strong' : 'text-good-ink';
+  const cls = isPhishing ? 'phishing' : 'legit';
   const label = isPhishing ? 'โมเดล ML: น่าจะเป็น Phishing' : 'โมเดล ML: น่าจะปลอดภัย';
-  mlResultEl.innerHTML = `
-    <div class="text-sm px-3 py-2 rounded-lg ${bg} ${text} font-medium">${label}</div>
-  `;
+  mlResultEl.innerHTML = `<div class="ml-box ${cls}">${label}</div>`;
 }
 
 function renderMLUnavailable() {
   mlResultEl.innerHTML = `
-    <div class="text-sm text-ink-muted px-3 py-2">
-      ตรวจด้วย ML ไม่ได้ — เปิด API ไว้ที่ localhost:8000 ก่อน (ดู phishing-detector/api/README.md)
-    </div>
+    <div class="ml-box unavailable">ตรวจด้วย ML ไม่ได้ — เปิด API ไว้ที่ localhost:8000 ก่อน (ดู phishing-detector/api/README.md)</div>
   `;
 }
 

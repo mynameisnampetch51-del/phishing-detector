@@ -24,14 +24,18 @@
 | URL ยาวผิดปกติ | 1 | เกิน 75 ตัวอักษร |
 | ใช้ URL shortener | 1 | เทียบกับ list บริการย่อลิงก์ที่รู้จัก |
 
-คะแนนรวม 0 = ปลอดภัย, 1–3 = น่าสงสัย, 4+ = อันตรายสูง
+คะแนนรวม 0 = ปลอดภัย, 1–3 = น่าสงสัย, 4+ = อันตรายสูง (เก็บเป็น `MAX_SCORE`/`SCORE_THRESHOLDS` ใน `rules.js` — ไม่ hardcode ซ้ำใน `app.js`)
+
+## ดีไซน์
+
+ตั้งใจให้หน้าตาใกล้เคียงกับ [password-strength-checker](../password-strength-checker) — พื้น instrument-panel, ฟอนต์ IBM Plex Sans Thai/Mono, ช่องกรอกแบบ label เว้าบนขอบ, และแสดงคะแนนความเสี่ยงเป็น**มาตรวัดเข็มเดียว** (0–15) ที่มีโซนสีเขียว/เหลือง/แดงตรงกับ `SCORE_THRESHOLDS` แทนตัวเลขลอยๆ — ต่างจากที่ checker เลือกใช้พื้นเข้ม หน้านี้ใช้พื้นสว่างแทน เพราะ **explainability คือจุดขายหลัก** ของเครื่องมือนี้ (ต้องเห็นว่ากฎไหนเข้าเกณฑ์บ้าง ไม่ใช่แค่คะแนนเดียว) รายการเช็คทั้ง 8 ข้อเลยยังอยู่ครบใต้มาตรวัด ไม่ตัดออกแบบที่ทำกับหน้า checker
 
 ## เทคนิคที่ใช้
 
 - แยกแต่ละกฎเป็น pure function ใน `rules.js` — เทส/แก้ไขทีละข้อได้อิสระ
 - Implement Levenshtein distance เองเพื่อจับ typosquatting (ไม่พึ่ง library)
 - `localStorage` เก็บประวัติการตรวจสอบล่าสุด 10 รายการ — คลิกประวัติเพื่อตรวจซ้ำได้
-- Styling ด้วย Tailwind CDN ธีมเดียวกับ `to-do/` และ `cube-net/`
+- วาดมาตรวัดด้วย SVG ล้วน (ไม่พึ่ง library กราฟ) — ใช้ arc/needle helper แบบเดียวกับ `password-strength-checker/app.js`
 
 ## ML layer (optional)
 
